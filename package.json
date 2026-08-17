@@ -1,0 +1,22 @@
+{
+  "name": "seven-card-show",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Seven-Card Show -- an original card game about shedding value and gambling on SHOW.",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "node -e \"console.log('Seven-Card Show is a static app -- nothing to build. Run npm run dev to serve it.')\"",
+    "test": "node tests/engine.test.js && node tests/qa_engine.test.js && node tests/simulate.js && node tests/qa_simulate.test.js",
+    "test:ui": "playwright test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.62.1",
+    "autocannon": "^8.0.0"
+  }
+}

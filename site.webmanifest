@@ -1,0 +1,16 @@
+{
+  "name": "Seven Card Show",
+  "short_name": "Seven Card Show",
+  "description": "Reduce your cards. Risk the SHOW. Survive the rounds.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
