@@ -344,3 +344,17 @@ function ordinalSuffix(n) {
   const v = n % 100;
   return s[(v - 20) % 10] || s[v] || s[0];
 }
+
+
+export function renderQuitConfirmationOverlay(app) {
+  return overlay([
+    h('div', { className: 'result-tag wrong' }, 'Quit to Home?'),
+    h('h2', { className: 'overlay-title' }, 'Leave this game?'),
+    h('p', { className: 'overlay-sub' }, 'All current game progress will be permanently lost.'),
+    h('div', { className: 'screen-actions', style: 'justify-content:center; margin-top: 24px;' }, [
+      h('button', { className: 'btn btn-secondary', onClick: () => app.cancelQuitToHome() }, 'Cancel'),
+      h('button', { className: 'btn btn-primary', onClick: () => app.executeQuitToHome() }, 'Quit to Home'),
+    ]),
+  ]);
+}
+

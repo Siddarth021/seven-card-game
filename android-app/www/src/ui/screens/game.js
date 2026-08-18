@@ -9,13 +9,23 @@ import { isShowAvailable, MODE } from '../../game/engine.js';
 
 export function renderGame(app) {
   const state = app.gameState;
-  const player = state.players[state.currentPlayerIndex];
-  const isHumanTurn = !player.isBot;
+  const currentPlayer = state.players[state.currentPlayerIndex];
+  const isHumanTurn = !currentPlayer.isBot;
+
+  let bottomPlayer = currentPlayer;
+  if (bottomPlayer.isBot) {
+    const localHuman = app.getLocalHumanPlayer();
+    if (localHuman) {
+      bottomPlayer = localHuman;
+    } else {
+      bottomPlayer = state.players.find((p) => !p.isBot) || bottomPlayer;
+    }
+  }
 
   const wrapper = h('div', { className: 'game-screen' }, [
     renderTopbar(app, state),
     h('div', { className: 'game-middle' }, [renderOpponentsRow(state), renderTableCenter(app, state)]),
-    renderHandArea(app, state, player, isHumanTurn),
+    renderHandArea(app, state, bottomPlayer, isHumanTurn),
     renderDrawer(app),
     h('div', { id: 'toast', className: 'toast' }),
   ]);
@@ -53,7 +63,7 @@ function renderOpponentsRow(state) {
     if (isTurn) classes.push('is-turn');
     if (!p.active) classes.push('is-eliminated');
 
-    return h('div', { className: classes.join(' ') }, [
+    return h('div', { id: `plaque-${p.id}`, className: classes.join(' ') }, [
       isTurn ? h('div', { className: 'opponent-turn-tag' }, 'TURN') : null,
       !p.active ? h('div', { className: 'eliminated-tag' }, 'OUT') : null,
       h('div', { className: 'opponent-name' }, p.name),
@@ -116,7 +126,7 @@ function renderHandArea(app, state, player, isHumanTurn) {
   // (only card backs) -- and on a shared/pass-and-play device, a human
   // player's cards stay hidden behind card backs until that player has
   // tapped to reveal them (see app.passLocked / revealHand()).
-  const shouldReveal = isHumanTurn && !app.passLocked;
+  const shouldReveal = !app.passLocked;
 
   if (!shouldReveal) {
     return renderHiddenHandArea(state, player);
@@ -126,30 +136,38 @@ function renderHandArea(app, state, player, isHumanTurn) {
   const selected = app.selectedCardIds;
   const anim = app.anim || {};
 
+  const hasMatch = player.hand.some((c) => canMatch(c, state.openCard));
+  const selectedCards = player.hand.filter((c) => selected.includes(c.id));
+
+  const canPlay = isHumanTurn && !app.isAnimating && hasMatch && canPlayGroup(selectedCards, state.openCard);
+  const canDoExchange = isHumanTurn && !app.isAnimating && canExchange(selectedCards);
+  const showAvailable = isShowAvailable(state);
+  const canCallShow = isHumanTurn && !app.isAnimating && showAvailable;
+
   const hand = player.hand.slice();
 
   const cardEls = hand.map((card, idx) => {
     const classes = [];
     if (anim.dealAnim) classes.push('card-deal-in');
     if (anim.drawnCardId === card.id) classes.push('card-pop-in');
+    if (app.drawnCardId === card.id) {
+      if (app.animatingStep === 'DISCARD' || app.animatingStep === 'DRAW') {
+        classes.push('hidden-during-anim');
+      } else if (app.animatingStep === 'REVEAL') {
+        classes.push('new-card-glow');
+      }
+    }
     return renderCard(card, {
       selected: selected.includes(card.id),
-      selectable: isHumanTurn,
+      selectable: isHumanTurn && !app.isAnimating,
       jokerCard: state.jokerCard,
       showZeroBadge: true,
       onClick: (c) => app.toggleCardSelection(c),
       animClass: classes.join(' '),
       animDelay: anim.dealAnim ? idx * 45 : 0,
+      animDelay: anim.dealAnim ? idx * 60 : 0,
     });
   });
-
-  const hasMatch = player.hand.some((c) => canMatch(c, state.openCard));
-  const selectedCards = player.hand.filter((c) => selected.includes(c.id));
-
-  const canPlay = isHumanTurn && hasMatch && canPlayGroup(selectedCards, state.openCard);
-  const canDoExchange = isHumanTurn && canExchange(selectedCards);
-  const showAvailable = isShowAvailable(state);
-  const canCallShow = isHumanTurn && showAvailable;
 
   const header = h('div', { className: 'hand-header' }, [
     h('div', { className: 'you-status' }, [
@@ -167,7 +185,7 @@ function renderHandArea(app, state, player, isHumanTurn) {
         disabled: !canPlay,
         onClick: () => app.performPlay(),
       },
-      [hasMatch ? 'PLAY / DISCARD' : 'PLAY / DISCARD', h('small', {}, hasMatch ? 'select matching cards' : 'no match available')]
+      ['PLAY', h('small', {}, 'discard matching')]
     ),
     h(
       'button',
@@ -189,7 +207,8 @@ function renderHandArea(app, state, player, isHumanTurn) {
     ),
   ]);
 
-  const hint = h('div', { className: 'inline-hint' + (app.actionError ? ' is-error' : '') }, app.actionError || hintText(hasMatch, selected.length));
+  const currentPlayer = state.players[state.currentPlayerIndex];
+  const hint = h('div', { className: 'inline-hint' + (app.actionError ? ' is-error' : '') }, app.actionError || hintText(hasMatch, selected.length, isHumanTurn, currentPlayer.name));
 
   return h('div', { className: 'hand-area' }, [header, h('div', { className: 'hand-cards' }, cardEls), actionBar, hint]);
 }
@@ -231,11 +250,7 @@ function renderHiddenHandArea(state, player) {
   ]);
 }
 
-function hintText(hasMatch, selectedCount) {
-  if (selectedCount === 0) {
-    return hasMatch
-      ? 'Select matching cards to PLAY, or any same-rank cards to EXCHANGE.'
-      : 'No match available \u2014 select any same-rank cards to EXCHANGE.';
-  }
-  return 'Tap an available action below to proceed.';
+function hintText(hasMatch, selectedCount, isHumanTurn, currentPlayerName) {
+  if (!isHumanTurn) return `Waiting for ${currentPlayerName} \u2026`;
+  return ''; // Replaced verbose instructions with empty string for cleaner UI
 }

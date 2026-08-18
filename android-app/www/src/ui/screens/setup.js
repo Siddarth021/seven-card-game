@@ -158,6 +158,7 @@ export function renderSettingsScreen(app) {
     h('p', { className: 'screen-subtitle' }, 'Adjust sound and animation preferences.'),
     settingRow('Sound', settings.sound, () => app.toggleSetting('sound')),
     settingRow('Animations', settings.animations, () => app.toggleSetting('animations')),
+    settingRow('Light Mode', settings.lightMode, () => app.toggleSetting('lightMode')),
     h('div', { className: 'screen-actions' }, [
       h('button', { className: 'btn btn-secondary', onClick: () => app.goHome() }, 'Back to Home'),
     ]),

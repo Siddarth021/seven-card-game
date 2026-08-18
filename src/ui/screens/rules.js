@@ -17,7 +17,10 @@ const RULES = [
 
 export function renderRules(app) {
   const panel = h('div', { className: 'screen-panel rules-panel' }, [
-    h('h2', { className: 'screen-title' }, 'How to Play'),
+    h('div', { className: 'screen-actions rules-top-actions' }, [
+      h('button', { className: 'btn btn-primary', onClick: () => app.goHome() }, '← Back / Home'),
+    ]),
+    h('h2', { className: 'screen-title', style: 'margin-top: 16px;' }, 'How to Play'),
     h('p', { className: 'screen-subtitle' }, 'The short version of everything Seven-Card Show asks of you.'),
     h(
       'div',
@@ -31,9 +34,6 @@ export function renderRules(app) {
         return item;
       })
     ),
-    h('div', { className: 'screen-actions' }, [
-      h('button', { className: 'btn btn-primary', onClick: () => app.goHome() }, 'Back to Home'),
-    ]),
   ]);
   return h('div', { className: 'screen' }, [panel]);
 }

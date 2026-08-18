@@ -7,6 +7,7 @@ import {
   playGroup,
   exchange,
   callShow,
+  advancePlayerTurn,
   finalizeRound,
   continueToNextRound,
   PHASE,
@@ -17,7 +18,7 @@ import { renderHome } from './ui/screens/home.js';
 import { renderSetup, renderSettingsScreen } from './ui/screens/setup.js';
 import { renderRules } from './ui/screens/rules.js';
 import { renderGame } from './ui/screens/game.js';
-import { renderOverlayForPhase, renderPassLockOverlay, renderShowRevealModal } from './ui/screens/overlays.js';
+import { renderOverlayForPhase, renderPassLockOverlay, renderShowRevealModal, renderQuitConfirmationOverlay } from './ui/screens/overlays.js';
 
 const BOT_ACTION_DELAY_MS = 850;
 
@@ -28,7 +29,7 @@ function loadSettings() {
   } catch {
     /* ignore corrupted storage */
   }
-  return { sound: true, animations: true };
+  return { sound: true, animations: true, lightMode: false };
 }
 
 function saveSettings(settings) {
@@ -60,6 +61,9 @@ export class App {
     this.screen = 'HOME';
     this.settings = loadSettings();
     setSoundEnabled(this.settings.sound);
+    if (this.settings.lightMode) {
+      document.documentElement.dataset.theme = 'light';
+    }
 
     this.setupState = defaultSetupState('SINGLE_ROUND');
     this.gameState = null;
@@ -112,6 +116,9 @@ export class App {
       if (overlay) wrap.appendChild(overlay);
       if (this.showRevealOpen && this.gameState?.lastShowResult) {
         wrap.appendChild(renderShowRevealModal(this, this.gameState));
+      }
+      if (this.quitConfirmationOpen) {
+        wrap.appendChild(renderQuitConfirmationOverlay(this));
       }
     }
     return wrap;
@@ -228,14 +235,30 @@ export class App {
   toggleSetting(key) {
     this.settings[key] = !this.settings[key];
     if (key === 'sound') setSoundEnabled(this.settings.sound);
+    if (key === 'lightMode') {
+      if (this.settings.lightMode) {
+        document.documentElement.dataset.theme = 'light';
+      } else {
+        delete document.documentElement.dataset.theme;
+      }
+    }
     saveSettings(this.settings);
     this.render();
   }
 
   confirmQuitToHome() {
-    if (window.confirm('Leave this game and return home? Progress will be lost.')) {
-      this.goHome();
-    }
+    this.quitConfirmationOpen = true;
+    this.render();
+  }
+
+  executeQuitToHome() {
+    this.quitConfirmationOpen = false;
+    this.goHome();
+  }
+
+  cancelQuitToHome() {
+    this.quitConfirmationOpen = false;
+    this.render();
   }
 
   // ---------------- setup screen actions ----------------
@@ -354,6 +377,8 @@ export class App {
     this._prevOpenCardId = null;
     this._prevRoundNumber = null;
     this._prevHandForPlayer = null;
+    this.drawerOpen = false;
+    this.quitConfirmationOpen = false;
     this.showRevealOpen = false;
   }
 
@@ -387,17 +412,186 @@ export class App {
   }
 
   performPlay() {
+    if (this.isAnimating) return;
+
+    const selectedEls = Array.from(document.querySelectorAll('.hand-cards .pcard.selected'));
+    const openSlotEl = document.querySelector('.open-card-slot .pcard');
+    const openRect = openSlotEl ? openSlotEl.getBoundingClientRect() : { left: window.innerWidth/2, top: window.innerHeight/2, width: 60, height: 90 };
+    
+    const clones = selectedEls.map(el => {
+      const rect = el.getBoundingClientRect();
+      const clone = el.cloneNode(true);
+      clone.style.position = 'fixed';
+      clone.style.left = rect.left + 'px';
+      clone.style.top = rect.top + 'px';
+      clone.style.width = rect.width + 'px';
+      clone.style.height = rect.height + 'px';
+      clone.style.margin = '0';
+      clone.style.zIndex = '1000';
+      clone.style.transition = 'transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 400ms ease';
+      document.body.appendChild(clone);
+      el.style.opacity = '0';
+      return { clone, rect };
+    });
+    
+    document.body.offsetHeight; // reflow
+
     const state = this.gameState;
     const player = state.players[state.currentPlayerIndex];
-    const result = playGroup(state, player.id, this.selectedCardIds);
-    this.handleActionResult(result, 'play');
+    
+    // Play with deferred turn
+    const result = playGroup(state, player.id, this.selectedCardIds, true);
+    if (result.error) {
+      clones.forEach(c => c.clone.remove());
+      this.handleActionResult(result, 'play');
+      return;
+    }
+
+    this.isAnimating = true;
+    this.actionError = '';
+    this.selectedCardIds = [];
+    if (this.settings.sound) sounds.play();
+
+    clones.forEach(({ clone, rect }) => {
+      const dx = openRect.left - rect.left;
+      const dy = openRect.top - rect.top;
+      const scale = openRect.width / rect.width;
+      clone.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
+    });
+
+    setTimeout(() => {
+      clones.forEach(c => c.clone.remove());
+      this.render(); // open card updates now
+      
+      // Short delay so the user registers the discard before next turn
+      setTimeout(() => {
+        this.isAnimating = false;
+        advancePlayerTurn(this.gameState, player.id);
+        this.render();
+        this.maybeRunBotTurn();
+      }, 500);
+    }, 400);
   }
 
   performExchange() {
+    if (this.isAnimating) return;
+
+    // 1. Grab coordinates of selected cards BEFORE mutating state
+    const selectedEls = Array.from(document.querySelectorAll('.hand-cards .pcard.selected'));
+    const openSlotEl = document.querySelector('.open-card-slot .pcard');
+    const openRect = openSlotEl ? openSlotEl.getBoundingClientRect() : { left: window.innerWidth/2, top: window.innerHeight/2, width: 60, height: 90 };
+    
+    // Setup discard clones
+    const clones = selectedEls.map(el => {
+      const rect = el.getBoundingClientRect();
+      const clone = el.cloneNode(true);
+      clone.style.position = 'fixed';
+      clone.style.left = rect.left + 'px';
+      clone.style.top = rect.top + 'px';
+      clone.style.width = rect.width + 'px';
+      clone.style.height = rect.height + 'px';
+      clone.style.margin = '0';
+      clone.style.zIndex = '1000';
+      clone.style.transition = 'transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 400ms ease';
+      document.body.appendChild(clone);
+      el.style.opacity = '0'; // hide original card
+      return { clone, rect };
+    });
+    
+    document.body.offsetHeight; // reflow
+
+    // 2. Engine execution (deferred turn)
     const state = this.gameState;
     const player = state.players[state.currentPlayerIndex];
-    const result = exchange(state, player.id, this.selectedCardIds);
-    this.handleActionResult(result, 'exchange');
+    const oldHandIds = player.hand.map(c => c.id);
+
+    const result = exchange(state, player.id, this.selectedCardIds, true);
+    if (result.error) {
+      clones.forEach(c => c.clone.remove());
+      this.handleActionResult(result, 'exchange');
+      return;
+    }
+
+    const drawnCard = player.hand.find(c => !oldHandIds.includes(c.id));
+    if (drawnCard) this.drawnCardId = drawnCard.id;
+
+    this.isAnimating = true;
+    this.animatingStep = 'DISCARD';
+    this.actionError = '';
+    this.selectedCardIds = [];
+    if (this.settings.sound) sounds.exchange();
+
+    // 3. Animate discard clones
+    clones.forEach(({ clone, rect }) => {
+      const dx = openRect.left - rect.left;
+      const dy = openRect.top - rect.top;
+      const scale = openRect.width / rect.width;
+      clone.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
+    });
+
+    setTimeout(() => {
+      clones.forEach(c => c.clone.remove());
+      this.render(); // Now Open Card updates, and hidden drawn card is rendered in DOM
+      
+      // SHORT DELAY (wait 500ms before drawing)
+      setTimeout(() => {
+        this.animatingStep = 'DRAW';
+        
+        if (!drawnCard) {
+          this.finishExchangeAnimation(player);
+          return;
+        }
+
+        const newCardEl = document.getElementById(`card-${drawnCard.id}`);
+        const drawPileEl = document.querySelector('.draw-pile-stack .card-back');
+        const drawRect = drawPileEl ? drawPileEl.getBoundingClientRect() : openRect;
+        
+        if (newCardEl) {
+          const newRect = newCardEl.getBoundingClientRect();
+          
+          const drawClone = document.createElement('div');
+          drawClone.className = 'pcard card-back';
+          drawClone.style.position = 'fixed';
+          drawClone.style.left = drawRect.left + 'px';
+          drawClone.style.top = drawRect.top + 'px';
+          drawClone.style.width = drawRect.width + 'px';
+          drawClone.style.height = drawRect.height + 'px';
+          drawClone.style.zIndex = '1000';
+          drawClone.style.transition = 'transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1)';
+          document.body.appendChild(drawClone);
+          
+          document.body.offsetHeight; // reflow
+          
+          const dx = newRect.left - drawRect.left;
+          const dy = newRect.top - drawRect.top;
+          const scale = newRect.width / drawRect.width;
+          drawClone.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
+          
+          setTimeout(() => {
+            drawClone.remove();
+            
+            // REVEAL
+            this.animatingStep = 'REVEAL';
+            this.render();
+            
+            setTimeout(() => {
+              this.finishExchangeAnimation(player);
+            }, 500);
+          }, 450);
+        } else {
+          this.finishExchangeAnimation(player);
+        }
+      }, 500); // short delay
+    }, 400); // discard duration
+  }
+
+  finishExchangeAnimation(player) {
+    this.drawnCardId = null;
+    this.isAnimating = false;
+    this.animatingStep = null;
+    advancePlayerTurn(this.gameState, player.id);
+    this.render();
+    this.maybeRunBotTurn();
   }
 
   performShow() {
@@ -502,32 +696,109 @@ export class App {
     if (!player.isBot) return;
 
     const action = decideBotAction(state, player);
-    let result;
+    
+    const finishBotAction = () => {
+      advancePlayerTurn(this.gameState, player.id);
+      this.render();
+      this.maybeRunBotTurn();
+    };
+
     if (action.type === 'SHOW') {
-      result = callShow(state, player.id);
-    } else if (action.type === 'PLAY') {
-      result = playGroup(state, player.id, action.cardIds);
-    } else {
-      result = exchange(state, player.id, action.cardIds);
-    }
-
-    if (result.error) {
-      // Defensive fallback: if the bot proposed something illegal,
-      // exchange one arbitrary card instead of stalling the game.
-      const fallbackCard = player.hand[0];
-      if (fallbackCard) exchange(state, player.id, [fallbackCard.id]);
-    }
-
-    if (this.settings.sound) {
-      if (action.type === 'PLAY') sounds.play();
-      else if (action.type === 'EXCHANGE') sounds.exchange();
-      else {
+      const result = callShow(state, player.id);
+      if (!result.error && this.settings.sound) {
         const correct = state.lastShowResult?.correct;
         correct ? sounds.showCorrect() : sounds.showWrong();
       }
+      this.handleActionResult(result, 'show');
+      return;
     }
 
-    this.render();
-    this.maybeRunBotTurn();
+    const isExchange = action.type === 'EXCHANGE';
+    let result;
+    if (isExchange) {
+      result = exchange(state, player.id, action.cardIds, true);
+      if (result.error) {
+        const fallbackCard = player.hand[0];
+        if (fallbackCard) result = exchange(state, player.id, [fallbackCard.id], true);
+      }
+    } else {
+      result = playGroup(state, player.id, action.cardIds, true);
+    }
+
+    if (result.error) {
+      finishBotAction();
+      return;
+    }
+
+    if (this.settings.sound) {
+      if (isExchange) sounds.exchange();
+      else sounds.play();
+    }
+
+    // Prepare Bot Animation Clones
+    const plaqueEl = document.getElementById(`plaque-${player.id}`);
+    const openSlotEl = document.querySelector('.open-card-slot .pcard');
+    const drawPileEl = document.querySelector('.draw-pile-stack .card-back');
+    
+    // Fallback coordinates if DOM elements missing
+    const center = { left: window.innerWidth/2, top: window.innerHeight/2, width: 60, height: 90 };
+    const plaqueRect = plaqueEl ? plaqueEl.getBoundingClientRect() : center;
+    const openRect = openSlotEl ? openSlotEl.getBoundingClientRect() : center;
+    const drawRect = drawPileEl ? drawPileEl.getBoundingClientRect() : center;
+
+    // 1. Discard Animation
+    const dropClone = document.createElement('div');
+    dropClone.className = 'pcard card-back';
+    dropClone.style.position = 'fixed';
+    dropClone.style.left = plaqueRect.left + 'px';
+    dropClone.style.top = plaqueRect.top + 'px';
+    dropClone.style.width = openRect.width + 'px';
+    dropClone.style.height = openRect.height + 'px';
+    dropClone.style.zIndex = '1000';
+    dropClone.style.transition = 'transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 400ms ease';
+    document.body.appendChild(dropClone);
+
+    document.body.offsetHeight; // reflow
+
+    const dropDx = openRect.left - plaqueRect.left;
+    const dropDy = openRect.top - plaqueRect.top;
+    dropClone.style.transform = `translate(${dropDx}px, ${dropDy}px)`;
+
+    setTimeout(() => {
+      dropClone.remove();
+      this.render(); // update the Open Card visually only now
+      
+      // Delay to let user register discard
+      setTimeout(() => {
+        if (!isExchange) {
+          finishBotAction();
+          return;
+        }
+
+        // 2. Draw Animation
+        const drawClone = document.createElement('div');
+        drawClone.className = 'pcard card-back';
+        drawClone.style.position = 'fixed';
+        drawClone.style.left = drawRect.left + 'px';
+        drawClone.style.top = drawRect.top + 'px';
+        drawClone.style.width = openRect.width + 'px';
+        drawClone.style.height = openRect.height + 'px';
+        drawClone.style.zIndex = '1000';
+        drawClone.style.transition = 'transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1)';
+        document.body.appendChild(drawClone);
+
+        document.body.offsetHeight; // reflow
+
+        const drawDx = plaqueRect.left - drawRect.left;
+        const drawDy = plaqueRect.top - drawRect.top;
+        drawClone.style.transform = `translate(${drawDx}px, ${drawDy}px)`;
+
+        setTimeout(() => {
+          drawClone.remove();
+          finishBotAction();
+        }, 450);
+
+      }, 500);
+    }, 400);
   }
 }

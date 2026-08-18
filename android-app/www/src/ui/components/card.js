@@ -36,6 +36,7 @@ export function renderCard(card, options = {}) {
   return h(
     'div',
     {
+      id: card && card.id ? `card-${card.id}` : undefined,
       className: classes.join(' '),
       style: animDelay ? `animation-delay:${animDelay}ms` : undefined,
       onClick: selectable && onClick ? () => onClick(card) : null,

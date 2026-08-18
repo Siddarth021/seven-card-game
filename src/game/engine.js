@@ -3,7 +3,7 @@
 // piles, or scores directly -- every change flows through here so the
 // rules stay authoritative and consistent.
 
-import { createDeck, shuffleDeck } from './cards.js';
+import { createDeck, shuffleDeck, SUIT_SYMBOL } from './cards.js';
 import { getCardValue, calculateHandTotal } from './joker.js';
 import { canMatch, canPlayGroup, canExchange } from './rules.js';
 
@@ -130,7 +130,7 @@ export function startNewRound(state) {
   state.gamePhase = PHASE.PLAYING;
   state.pendingAction = null;
 
-  log(state, `Round ${state.roundNumber} begins. Joker: ${state.jokerCard.rank}${state.jokerCard.suit[0].toUpperCase()}.`);
+  log(state, `Round ${state.roundNumber} begins. Joker: ${state.jokerCard.rank}${SUIT_SYMBOL[state.jokerCard.suit]}.`);
   const starter = state.players[state.currentPlayerIndex];
   log(state, `${starter.name} starts the round.`);
 }
@@ -170,7 +170,7 @@ function removeCardsFromHand(player, cards) {
  * PLAY / DISCARD action: player discards 1+ same-rank cards that match
  * the Open Card's rank. No replacement card is drawn. Turn ends.
  */
-export function playGroup(state, playerId, cardIds) {
+export function playGroup(state, playerId, cardIds, deferTurnAdvance = false) {
   const player = playerById(state, playerId);
   const cards = player.hand.filter((c) => cardIds.includes(c.id));
 
@@ -192,7 +192,7 @@ export function playGroup(state, playerId, cardIds) {
 
   log(state, `${player.name} discarded ${cards.length} card${cards.length > 1 ? 's' : ''} (${cards.map((c) => c.rank).join(', ')}).`);
 
-  endTurn(state, player);
+  if (!deferTurnAdvance) endTurn(state, player);
   return ok(state);
 }
 
@@ -209,7 +209,7 @@ export function playGroup(state, playerId, cardIds) {
  * rank is irrelevant -- it still becomes the new Open Card the moment
  * it's dropped, and every subsequent player matches against it.
  */
-export function exchange(state, playerId, cardIds) {
+export function exchange(state, playerId, cardIds, deferTurnAdvance = false) {
   const player = playerById(state, playerId);
   const cards = player.hand.filter((c) => cardIds.includes(c.id));
 
@@ -241,6 +241,12 @@ export function exchange(state, playerId, cardIds) {
     log(state, `${player.name} discarded ${cards.length} card${cards.length > 1 ? 's' : ''}, but no cards remained to draw. Open Card is now ${state.openCard.rank}.`);
   }
 
+  if (!deferTurnAdvance) endTurn(state, player);
+  return ok(state);
+}
+
+export function advancePlayerTurn(state, playerId) {
+  const player = playerById(state, playerId);
   endTurn(state, player);
   return ok(state);
 }

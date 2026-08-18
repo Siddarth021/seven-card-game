@@ -21,38 +21,68 @@
   <!-- <link rel="canonical" href="https://[YOUR_PRODUCTION_DOMAIN]/" /> -->
 
 <style>
-/* Android-specific CSS overrides (Scoreboard Modal & Topbar layout) */
-@media (max-width: 1024px) {
-  .topbar-buttons {
-    width: 100% !important;
-    display: flex !important;
-    justify-content: space-between !important;
-    flex-direction: row-reverse !important; 
-  }
-  
-  .side-drawer {
-    top: 50% !important;
-    left: 50% !important;
-    right: auto !important;
-    bottom: auto !important;
-    height: auto !important;
-    max-height: 85vh !important;
-    width: 90% !important;
-    max-width: 400px !important;
-    border-radius: 12px !important;
-    border: 1px solid var(--line) !important;
-    transform: translate(-50%, 150vh) !important;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7) !important;
-    transition: transform 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-  }
+/* Android-only: Vertically center setup screens */
+.screen {
+  justify-content: center !important;
+  padding: 24px 16px !important;
+  box-sizing: border-box;
+}
+.screen-panel {
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  margin: auto !important;
+}
 
-  .side-drawer.open {
-    transform: translate(-50%, -50%) !important;
-  }
-  
-  .inline-hint {
-    display: none !important;
-  }
+/* Android-only: Topbar reorganization */
+.game-topbar {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  padding: 16px 16px 8px 16px !important;
+  border-bottom: none !important;
+  background: transparent !important;
+}
+
+/* Brand header with subtle divider */
+.game-topbar .brand {
+  text-align: center;
+  font-size: 22px;
+  margin-bottom: 24px !important;
+  position: relative;
+}
+.game-topbar .brand::after {
+  content: '';
+  position: absolute;
+  bottom: -12px;
+  left: -16px;
+  right: -16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212,162,76,0.3) 20%, rgba(212,162,76,0.3) 80%, transparent);
+}
+
+/* Home / Scoreboard */
+.game-topbar .topbar-buttons {
+  order: 2 !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  flex-direction: row-reverse !important; 
+  width: 100% !important;
+  margin-bottom: 16px !important;
+}
+
+/* Round / Threshold */
+.game-topbar .turn-meta {
+  order: 3 !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+}
+
+/* Hide TURN, CURRENT PLAYER, SHOW */
+.game-topbar .turn-meta span:nth-child(2),
+.game-topbar .turn-meta span:nth-child(3),
+.game-topbar .turn-meta span:nth-child(4) {
+  display: none !important;
 }
 </style>
     

@@ -63,6 +63,8 @@ body {
   font-family: var(--font-body);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 #app {
@@ -827,6 +829,16 @@ a {
   animation: cardPopIn 1500ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+.new-card-glow {
+  box-shadow: 0 0 16px 4px rgba(212, 162, 76, 0.8) !important;
+  transition: box-shadow 300ms ease;
+  z-index: 10;
+}
+
+.hidden-during-anim {
+  visibility: hidden;
+}
+
 .hand-cards-hidden .pcard.card-back {
   opacity: 0.92;
 }
@@ -901,6 +913,11 @@ a {
   font-size: 10px;
   color: var(--cream-dim);
   letter-spacing: 0.04em;
+}
+
+.action-btn:not(:disabled) small {
+  color: inherit;
+  opacity: 0.85;
 }
 
 .action-btn:not(:disabled):hover {
@@ -1481,3 +1498,105 @@ tr.is-eliminated-row td {
     transition-duration: 0.001ms !important;
   }
 }
+
+
+/* ============================================================
+   MOBILE RESPONSIVE OVERRIDES
+   ============================================================ */
+@media (max-width: 1024px) {
+  /* Scoreboard Drawer becomes a centered Modal */
+  .side-drawer {
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    height: auto;
+    max-height: 85vh;
+    width: 90%;
+    max-width: 400px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    transform: translate(-50%, 150vh);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+    transition: transform 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  .side-drawer.open {
+    transform: translate(-50%, -50%);
+  }
+
+  /* Game Topbar - Home left, Scoreboard right */
+  .topbar-buttons {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    flex-direction: row-reverse;
+  }
+
+  /* Reduce empty vertical space */
+  .game-middle {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px; /* Was originally relying on implicit spacing */
+  }
+
+  .opponents-row {
+    margin-bottom: 0px; 
+    padding: 10px 0;
+  }
+
+  .table-center {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+}
+
+
+.rules-top-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 0 !important;
+  margin-bottom: 8px;
+  width: 100%;
+}
+.rules-top-actions .btn {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+
+/* ============================================================
+   LIGHT MODE OVERRIDES
+   ============================================================ */
+[data-theme="light"] {
+  --ink-900: #f7f5f0;
+  --ink-800: #eae5db;
+  --ink-700: #ded8cb;
+  --panel: #ffffff;
+  --panel-alt: #f0ede6;
+
+  --cream: #171b2c;
+  --cream-dim: #5c6275;
+
+  /* Preserve the gold tokens identically as requested */
+}
+
+
+/* ============================================================
+   LIGHT MODE OVERRIDES
+   ============================================================ */
+[data-theme="light"] {
+  --ink-900: #f4efe6;
+  --ink-800: #e8e1d5;
+  --ink-700: #dcd3c4;
+  --panel: #ffffff;
+  --panel-alt: #f0ebd9;
+
+  --cream: #171b2c;
+  --cream-dim: #60677e;
+  
+  --line: rgba(212, 162, 76, 0.4);
+}
+
