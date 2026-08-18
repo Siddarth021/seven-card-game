@@ -126,9 +126,7 @@ function renderHandArea(app, state, player, isHumanTurn) {
   const selected = app.selectedCardIds;
   const anim = app.anim || {};
 
-  const hand = player.hand
-    .slice()
-    .sort((a, b) => a.rank.localeCompare(b.rank) || a.suit.localeCompare(b.suit));
+  const hand = player.hand.slice();
 
   const cardEls = hand.map((card, idx) => {
     const classes = [];
@@ -149,7 +147,7 @@ function renderHandArea(app, state, player, isHumanTurn) {
   const selectedCards = player.hand.filter((c) => selected.includes(c.id));
 
   const canPlay = isHumanTurn && hasMatch && canPlayGroup(selectedCards, state.openCard);
-  const canDoExchange = isHumanTurn && !hasMatch && canExchange(selectedCards);
+  const canDoExchange = isHumanTurn && canExchange(selectedCards);
   const showAvailable = isShowAvailable(state);
   const canCallShow = isHumanTurn && showAvailable;
 
@@ -178,7 +176,7 @@ function renderHandArea(app, state, player, isHumanTurn) {
         disabled: !canDoExchange,
         onClick: () => app.performExchange(),
       },
-      ['EXCHANGE', h('small', {}, hasMatch ? 'not needed \u2014 you have a match' : 'discard + draw one')]
+      ['EXCHANGE', h('small', {}, 'discard + draw one')]
     ),
     h(
       'button',
@@ -234,12 +232,10 @@ function renderHiddenHandArea(state, player) {
 }
 
 function hintText(hasMatch, selectedCount) {
-  if (hasMatch) {
-    return selectedCount === 0
-      ? 'Select one or more cards matching the Open Card\u2019s rank to play them.'
-      : 'Tap PLAY / DISCARD to discard your selection.';
+  if (selectedCount === 0) {
+    return hasMatch
+      ? 'Select matching cards to PLAY, or any same-rank cards to EXCHANGE.'
+      : 'No match available \u2014 select any same-rank cards to EXCHANGE.';
   }
-  return selectedCount === 0
-    ? 'No matching rank in hand \u2014 select one card, or several of the same rank, to exchange.'
-    : 'Tap EXCHANGE to discard your selection and draw one card.';
+  return 'Tap an available action below to proceed.';
 }

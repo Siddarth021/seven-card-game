@@ -111,6 +111,10 @@ export function startNewRound(state) {
     }
   }
 
+  for (const p of activePlayers(state)) {
+    p.hand.sort((a, b) => a.rank.localeCompare(b.rank) || a.suit.localeCompare(b.suit));
+  }
+
   // 3. Remaining cards become the draw deck.
   state.drawPile = state.deck;
   state.discardPile = [];
@@ -215,6 +219,7 @@ export function exchange(state, playerId, cardIds) {
   if (cards.length !== cardIds.length) return err(state, 'Invalid card selection.');
   if (!canExchange(cards)) return err(state, 'Exchanged cards must all share the same rank.');
 
+  const firstDroppedIndex = player.hand.findIndex((c) => c.id === cards[0].id);
   removeCardsFromHand(player, cards);
 
   // Same rule as a matching PLAY: the previous Open Card falls into the
@@ -228,7 +233,7 @@ export function exchange(state, playerId, cardIds) {
 
   if (state.drawPile.length > 0) {
     const drawn = state.drawPile.pop();
-    player.hand.push(drawn);
+    player.hand.splice(firstDroppedIndex !== -1 ? firstDroppedIndex : player.hand.length, 0, drawn);
     log(state, `${player.name} discarded ${cards.length} card${cards.length > 1 ? 's' : ''} (${cards.map((c) => c.rank).join(', ')}) and drew a replacement. Open Card is now ${state.openCard.rank}.`);
   } else {
     // Both piles exhausted (extreme edge case) -- exchange still counts,

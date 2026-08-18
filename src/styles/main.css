@@ -796,7 +796,7 @@ a {
 }
 
 .pcard.card-pop-in {
-  animation: cardPopIn 460ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: cardPopIn 1500ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .hand-cards-hidden .pcard.card-back {
