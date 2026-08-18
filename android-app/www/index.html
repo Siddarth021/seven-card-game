@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Seven-Card Show</title>
+  <meta name="description" content="Seven-Card Show -- reduce your cards, risk the SHOW, survive the rounds." />
+  <meta name="theme-color" content="#0d1117" />
+  
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="stylesheet" href="/src/styles/main.css" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Seven-Card Show" />
+  <meta property="og:description" content="Reduce your cards. Risk the SHOW. Survive the rounds." />
+  <meta property="og:type" content="website" />
+  <!-- TODO: Set real production URL and image once domain is finalized -->
+  <!-- <meta property="og:url" content="https://[YOUR_PRODUCTION_DOMAIN]/" /> -->
+  <!-- <meta property="og:image" content="https://[YOUR_PRODUCTION_DOMAIN]/social-preview.png" /> -->
+  <!-- <link rel="canonical" href="https://[YOUR_PRODUCTION_DOMAIN]/" /> -->
+
+<style>
+/* Android-specific CSS overrides (Scoreboard Modal & Topbar layout) */
+@media (max-width: 1024px) {
+  .topbar-buttons {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    flex-direction: row-reverse !important; 
+  }
+  
+  .side-drawer {
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    height: auto !important;
+    max-height: 85vh !important;
+    width: 90% !important;
+    max-width: 400px !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--line) !important;
+    transform: translate(-50%, 150vh) !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7) !important;
+    transition: transform 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  }
+
+  .side-drawer.open {
+    transform: translate(-50%, -50%) !important;
+  }
+  
+  .inline-hint {
+    display: none !important;
+  }
+}
+</style>
+    
+</head>
+<body>
+  <main id="app"></main>
+  <script type="module" src="/src/main.js"></script>
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "1cc2f1910ac64b40b26c88bb77db9833"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>

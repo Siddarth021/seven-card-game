@@ -96,6 +96,17 @@ it wrong and you pay the penalty.
   Because the UI's drop animation already keys off `openCard.id`
   changing, fixing the engine state made the drop animation start
   playing correctly for exchanges too, with no UI code changes needed.
+- **Mobile UX Refinements:** Tightened the responsive vertical spacing
+  between the game table and player hands, and fixed scrolling on the
+  "How to Play" screen for smaller mobile devices.
+- **Android Native Polish:** Integrated Capacitor. Configured the
+  Android app for true immersive fullscreen mode and disabled native
+  long-press text selection.
+- **Android-Specific Layout Overrides:** Injected custom styling into
+  the Android build step (`sync.js`) to present the scoreboard as a
+  centered popup modal, reorder the top navigation bar, and hide
+  inline text hints, creating a native app feel while leaving the web
+  source 100% untouched.
 
 ## Tech stack
 
